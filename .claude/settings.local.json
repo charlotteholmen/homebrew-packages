@@ -7,7 +7,18 @@
       "Bash(gh run list:*)",
       "Bash(gh release view:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Read(//home/rick/projects-caddy/shelltape/**)",
+      "Read(//home/rick/projects-caddy/quickctx/**)",
+      "Bash(git push)",
+      "Read(//home/rick/projects-caddy/gdl/**)",
+      "Read(//home/rick/projects-caddy/ccproxy-api/.github/workflows/**)",
+      "Read(//home/rick/projects-caddy/ccproxy-api/**)",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(for file in .github/actions/load-python-target-matrix/targets/*.json)",
+      "Bash(do sed -i 's/\"\"python_version\"\": \"\"3.12\"\"/\"\"python_version\"\": \"\"3.11\"\"/g' \"$file\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
