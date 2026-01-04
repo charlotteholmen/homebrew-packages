@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ''
+      version:
+        description: 'Version for archive naming (e.g., v0.2.0). If not provided, derived from ref or git tag.'
+        required: false
+        type: string
+        default: ''
       binary_name:
         description: 'Name of the binary to build'
         required: true
@@ -68,6 +73,21 @@ jobs:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
 
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ -n "${{ inputs.ref }}" ] && [[ "${{ inputs.ref }}" == v* ]]; then
+            VERSION="${{ inputs.ref }}"
+          else
+            # Try to get version from git describe
+            VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Resolved version: ${VERSION}"
+
       - name: Checkout homebrew-packages for composite actions
         uses: actions/checkout@v4
         with:
@@ -84,6 +104,8 @@ jobs:
         uses: ./.homebrew-packages/.github/actions/package-python-pyinstaller
         with:
           binary_name: ${{ inputs.binary_name }}
+          version: ${{ steps.version.outputs.version }}
+          target: ${{ matrix.target }}
           archive_format: ${{ matrix.archive }}
           exe_suffix: ${{ matrix.exe_suffix }}
           assets: ${{ inputs.assets }}

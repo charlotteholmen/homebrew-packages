@@ -5,6 +5,12 @@ inputs:
   binary_name:
     description: 'Name of the binary to build'
     required: true
+  version:
+    description: 'Version tag (e.g., v0.2.0 or 0.2.0)'
+    required: true
+  target:
+    description: 'Target triple (e.g., x86_64-unknown-linux-gnu)'
+    required: true
   archive_format:
     description: 'Archive format: tar.gz or zip'
     required: true
@@ -63,6 +69,8 @@ runs:
       shell: pwsh
       run: |
         $BINARY_NAME = "${{ inputs.binary_name }}"
+        $VERSION = "${{ inputs.version }}"
+        $TARGET = "${{ inputs.target }}"
         $ASSETS = '${{ inputs.assets }}' | ConvertFrom-Json
 
         New-Item -ItemType Directory -Force -Path dist-archive
@@ -77,9 +85,12 @@ runs:
           }
         }
 
-        $ARCHIVE_NAME = "$BINARY_NAME-${env:RUNNER_ARCH}.zip"
+        $ARCHIVE_NAME = "$BINARY_NAME-$VERSION-$TARGET.zip"
         $itemsToCompress = Get-ChildItem -Path dist-archive -File
         Compress-Archive -Path $itemsToCompress.FullName -DestinationPath "dist/$ARCHIVE_NAME"
+
+        # Remove bare binary to avoid duplicate uploads (only keep the archive)
+        Remove-Item "dist/$BINARY_NAME${{ inputs.exe_suffix }}"
 
         Write-Output "Created archive: $ARCHIVE_NAME"
         Get-ChildItem dist
@@ -90,6 +101,8 @@ runs:
       run: |
         mkdir -p dist-archive
         BINARY_NAME="${{ inputs.binary_name }}"
+        VERSION="${{ inputs.version }}"
+        TARGET="${{ inputs.target }}"
         ASSETS='${{ inputs.assets }}'
 
         # Copy the built binary
@@ -105,11 +118,14 @@ runs:
           done
         fi
 
-        # Create archive
+        # Create archive with version and full target triple for unique naming
         cd dist-archive
-        ARCHIVE_NAME="$BINARY_NAME-${RUNNER_ARCH}.tar.gz"
+        ARCHIVE_NAME="$BINARY_NAME-$VERSION-$TARGET.tar.gz"
         tar czf "../dist/$ARCHIVE_NAME" *
         cd ..
+
+        # Remove bare binary to avoid duplicate uploads (only keep the archive)
+        rm -f "dist/$BINARY_NAME${{ inputs.exe_suffix }}"
 
         echo "Created archive: $ARCHIVE_NAME"
         ls -lh dist/
