@@ -25,6 +25,10 @@ inputs:
   entry_point:
     description: 'Python module entry point (e.g., ccproxy.cli:main)'
     required: true
+  extra_smoke_command:
+    description: 'Optional additional smoke command to run via the built binary (e.g., "plugins list")'
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -37,12 +41,22 @@ runs:
     - name: Build with PyInstaller
       shell: bash
       run: |
+        set -euo pipefail
+
         BINARY_NAME="${{ inputs.binary_name }}"
         ENTRY_POINT="${{ inputs.entry_point }}"
 
         # Parse entry_point format (module.path:function)
         MODULE=$(echo "$ENTRY_POINT" | cut -d: -f1)
         FUNCTION=$(echo "$ENTRY_POINT" | cut -d: -f2)
+        PACKAGE_ROOT="${MODULE%%.*}"
+        PACKAGE_ROOT_PATH="${PACKAGE_ROOT//./\/}"
+
+        PYINSTALLER_FLAGS="--collect-all ${PACKAGE_ROOT} --hidden-import=${MODULE}"
+
+        if [ -d "${PACKAGE_ROOT_PATH}/plugins" ]; then
+          PYINSTALLER_FLAGS="${PYINSTALLER_FLAGS} --collect-submodules ${PACKAGE_ROOT}.plugins"
+        fi
 
         # Create a temporary entry script for PyInstaller
         cat > __pyinstaller_entry__.py <<EOF
@@ -55,14 +69,27 @@ runs:
         uv run pyinstaller \
           --onefile \
           --name "$BINARY_NAME" \
-          --collect-all "$BINARY_NAME" \
-          --hidden-import="$MODULE" \
           --noconfirm \
           --clean \
+          ${PYINSTALLER_FLAGS} \
           __pyinstaller_entry__.py
 
         # Clean up temp script
         rm -f __pyinstaller_entry__.py
+
+    - name: Smoke test binary
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        BINARY_PATH="dist/${{ inputs.binary_name }}${{ inputs.exe_suffix }}"
+        EXTRA_SMOKE_COMMAND="${{ inputs.extra_smoke_command }}"
+
+        "$BINARY_PATH" --version
+
+        if [ -n "$EXTRA_SMOKE_COMMAND" ]; then
+          bash -lc "\"$BINARY_PATH\" $EXTRA_SMOKE_COMMAND"
+        fi
 
     - name: Package (Windows)
       if: inputs.archive_format == 'zip'

@@ -31,6 +31,8 @@ concurrency:
 jobs:
   build-termux:
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release.outputs.RELEASE_TAG }}
 
     steps:
       - name: Checkout homebrew-packages for metadata
@@ -104,8 +106,14 @@ jobs:
           mkdir -p "$PKGDIR/DEBIAN"
 
           # Download and extract the Android tarball from GitHub release
-          DOWNLOAD_URL="https://github.com/$REPO/releases/download/${RELEASE_TAG}/${TOOL}-aarch64-linux-android.tar.gz"
+          DOWNLOAD_URL="https://github.com/$REPO/releases/download/${RELEASE_TAG}/${TOOL}-${RELEASE_TAG}-aarch64-linux-android.tar.gz"
           echo "Downloading from: $DOWNLOAD_URL"
+
+          if ! wget -q --spider "$DOWNLOAD_URL"; then
+            echo "ERROR: expected release asset not found"
+            echo "Missing URL: $DOWNLOAD_URL"
+            exit 1
+          fi
 
           wget -q -O /tmp/package.tar.gz "$DOWNLOAD_URL"
 
@@ -187,7 +195,7 @@ jobs:
           TOOL="${{ inputs.tool }}"
           VERSION="${{ inputs.version }}"
           REPO="${{ inputs.repository }}"
-          RELEASE_TAG="${{ steps.release.outputs.RELEASE_TAG || format('v{0}', inputs.version) }}"
+          RELEASE_TAG="${{ needs.build-termux.outputs.release_tag || format('v{0}', inputs.version) }}"
 
           echo "Uploading Termux packages to $REPO release $RELEASE_TAG"
 

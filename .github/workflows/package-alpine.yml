@@ -71,6 +71,7 @@ jobs:
           TOOL: ${{ inputs.tool }}
           VERSION: ${{ inputs.version }}
           REPO: ${{ inputs.repository }}
+          RELEASE_TAG: ${{ steps.set_release.outputs.RELEASE_TAG }}
           ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
@@ -139,9 +140,13 @@ jobs:
                       cp "homebrew-packages/alpine/APKBUILD.$TOOL" APKBUILD
                     else
                       # Download tarball to compute checksum
-                      TARBALL_URL="https://github.com/$REPO/releases/download/v$VERSION/$TOOL-$TAR_ARCH-unknown-linux-musl.tar.gz"
+                      TARBALL_URL="https://github.com/$REPO/releases/download/$RELEASE_TAG/$TOOL-$RELEASE_TAG-$TAR_ARCH-unknown-linux-musl.tar.gz"
                       echo "Downloading $TARBALL_URL to calculate checksum..."
-                      curl -fsSL "$TARBALL_URL" -o "/tmp/$TOOL-$TAR_ARCH.tar.gz"
+                      if ! curl -fsSL "$TARBALL_URL" -o "/tmp/$TOOL-$TAR_ARCH.tar.gz"; then
+                        echo "ERROR: expected release asset not found"
+                        echo "Missing URL: $TARBALL_URL"
+                        exit 1
+                      fi
 
                       # compute the raw hash
                       HASH="$(sha512sum "/tmp/$TOOL-$TAR_ARCH.tar.gz" | awk '{print $1}')"
@@ -153,7 +158,7 @@ jobs:
                       # We will set the local source filename to match what abuild will expect:
                       # use "$TOOL-$VERSION.tar.gz" locally but point to architecture-specific remote URL.
                       LOCAL_NAME="$TOOL-$VERSION.tar.gz"
-                      REMOTE_URL="https://github.com/$REPO/releases/download/v$VERSION/$TOOL-$TAR_ARCH-unknown-linux-musl.tar.gz"
+                      REMOTE_URL="https://github.com/$REPO/releases/download/$RELEASE_TAG/$TOOL-$RELEASE_TAG-$TAR_ARCH-unknown-linux-musl.tar.gz"
 
                       # Generate APKBUILD — note: pkgrel=1, sha512sums contains only the hash.
                       # Also produce real tab characters for package() using printf.

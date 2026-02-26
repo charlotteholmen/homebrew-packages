@@ -41,6 +41,11 @@ on:
         description: 'Python module entry point (e.g., ccproxy.cli:main)'
         required: true
         type: string
+      extra_smoke_command:
+        description: 'Optional command to run with built binary for smoke testing'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   prepare:
@@ -110,6 +115,7 @@ jobs:
           exe_suffix: ${{ matrix.exe_suffix }}
           assets: ${{ inputs.assets }}
           entry_point: ${{ inputs.entry_point }}
+          extra_smoke_command: ${{ inputs.extra_smoke_command }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
