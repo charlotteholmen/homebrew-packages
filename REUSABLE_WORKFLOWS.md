@@ -31,32 +31,53 @@ on:
         required: true
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.normalize.outputs.version }}
+      release_tag: ${{ steps.normalize.outputs.release_tag }}
+    steps:
+      - name: Normalize version and release tag
+        id: normalize
+        run: |
+          RAW_VALUE="${{ github.event.release.tag_name || inputs.version }}"
+          RAW_VALUE="${RAW_VALUE#refs/tags/}"
+          VERSION="${RAW_VALUE#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
   alpine:
+    needs: prepare
     uses: CaddyGlow/homebrew-packages/.github/workflows/package-alpine.yml@main
     permissions:
       contents: write
     with:
       tool: quickctx  # ← Change to your tool name
-      version: ${{ github.event.release.tag_name || inputs.version }}
+      version: ${{ needs.prepare.outputs.version }}
       repository: ${{ github.repository }}
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
 
   debian:
+    needs: prepare
     uses: CaddyGlow/homebrew-packages/.github/workflows/package-debian.yml@main
     permissions:
       contents: write
     with:
       tool: quickctx  # ← Change to your tool name
-      version: ${{ github.event.release.tag_name || inputs.version }}
+      version: ${{ needs.prepare.outputs.version }}
       repository: ${{ github.repository }}
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
 
   termux:
+    needs: prepare
     uses: CaddyGlow/homebrew-packages/.github/workflows/package-termux.yml@main
     permissions:
       contents: write
     with:
       tool: quickctx  # ← Change to your tool name
-      version: ${{ github.event.release.tag_name || inputs.version }}
+      version: ${{ needs.prepare.outputs.version }}
       repository: ${{ github.repository }}
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
 ```
 
 ### 2. Release Flow
@@ -98,20 +119,20 @@ All three workflows accept the same inputs:
 | Input | Required | Description |
 |-------|----------|-------------|
 | `tool` | Yes | Tool name (e.g., "quickctx") |
-| `version` | Yes | Version without v prefix (e.g., "0.1.4") |
+| `version` | Yes | Version without `v` prefix (e.g., `0.1.4`) |
 | `repository` | Yes | Repository in format owner/repo |
-| `release_tag` | No | Release tag to upload to (default: v{version}) |
+| `release_tag` | No | Release tag to upload to (default: `v{version}`) |
 
 ## Requirements
 
 For the workflows to work, your tool repository must have:
 
 1. **Required Artifacts** (from `rust-ci.yml` or similar):
-   - Alpine: `{tool}-x86_64-unknown-linux-musl.tar.gz`
-   - Alpine: `{tool}-aarch64-unknown-linux-musl.tar.gz`
-   - Debian: `{tool}-x86_64-unknown-linux-gnu.tar.gz`
-   - Debian: `{tool}-aarch64-unknown-linux-gnu.tar.gz`
-   - Termux: `{tool}-aarch64-linux-android.tar.gz`
+   - Alpine: `{tool}-{release_tag}-x86_64-unknown-linux-musl.tar.gz`
+   - Alpine: `{tool}-{release_tag}-aarch64-unknown-linux-musl.tar.gz`
+   - Debian: `{tool}-{release_tag}-x86_64-unknown-linux-gnu.tar.gz`
+   - Debian: `{tool}-{release_tag}-aarch64-unknown-linux-gnu.tar.gz`
+   - Termux: `{tool}-{release_tag}-aarch64-linux-android.tar.gz`
 
 2. **Optional Metadata** (in `homebrew-packages`):
    - `Formula/{tool}.rb` - For binary names and description
