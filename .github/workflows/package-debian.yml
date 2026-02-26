@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: ''
+      architectures:
+        description: 'JSON array of Debian architectures to build (e.g., ["amd64","arm64"])'
+        required: false
+        type: string
+        default: '["amd64", "arm64"]'
 
 permissions:
   contents: write
@@ -35,7 +40,7 @@ jobs:
       release_tag: ${{ steps.release.outputs.RELEASE_TAG }}
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        arch: ${{ fromJson(inputs.architectures) }}
 
     steps:
       - name: Checkout homebrew-packages for metadata
